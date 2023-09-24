@@ -5,7 +5,6 @@ import youtube_dl
 from spotipy.oauth2 import SpotifyOAuth
 import base64
 import json
-import playlistConvert.user as user
 
 load_dotenv()
 
@@ -42,36 +41,51 @@ def get_access_token():
     # we will need to use this token to use this token to access the Spotify API in the header
 
 # get header
-def get_header(token):
+def get_auth_header(token):
     headers = {
         "Authorization": f"Bearer {token}"
     }
     return headers
 
-# get user id
-def get_user_id(headers):
-    url = "https://api.spotify.com/v1/me"
-    req = requests.get(url, headers=headers)
+def search_artist(token, artist):
+    url = f"https://api.spotify.com/v1/search?q={artist}&type=artist&limit=1"
+    req = requests.get(url, headers=get_auth_header(token))
     res = json.loads(req.content)
-    user_id = res["id"]
-    return user_id
+    print(res)
+    artist_id = res["artists"]["items"][0]["id"]
+    return artist_id
+
+
+# get user id (not working)
+def get_user_id(token):
+    url = "https://api.spotify.com/v1/me"
+    headers = {
+        "Authorization": f"Bearer {token}"
+    }
+    req = requests.get(url, headers=headers) # headers=get_auth_header(token)
+    res = json.loads(req.content)
+    print(res)
+    # return "da3xyrtvbvjhqwb3lc4rmqw60"
+    
 
 # create a playlist
-def create_playlist(headers, id, name):
-    url = f"https://api.spotify.com/v1/users/{id}/playlists"
-    data = {
-        "name": name
-    }
-    req = requests.post(url, headers=headers, data=data)
-    res = json.loads(req.content)
-    playlist_id = res["id"]
-    return playlist_id
+# def create_playlist(token, id, name):
+#     url = f"https://api.spotify.com/v1/users/{id}/playlists"
+#     data = {
+#         "name": name,
+#         "description": "Playlist created using the Spotify API"
+#     }
+#     req = requests.post(url, headers=get_auth_header(token), data=data)
+#     json_res = req.json()
+#     res = json.loads(req.content)
+#     print(json_res)
+#     #return playlist_id
 
 
 if __name__ == "__main__":
-    token = get_access_token()
-    header = get_header(token)
-    create_playlist(header, "Test Playlist")
+    token_api = get_access_token()  
+    print(get_user_id(token_api))
+    # print(search_artist(token, "Illenium"))
 
     
 
