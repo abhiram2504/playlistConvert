@@ -1,6 +1,7 @@
 from dotenv import load_dotenv
 import os
 import requests
+import spotipy
 import youtube_dl
 from spotipy.oauth2 import SpotifyOAuth
 import base64
@@ -11,7 +12,18 @@ load_dotenv()
 # Spotify Authentication
 client_id = os.getenv("CLIENT_ID")
 client_secret = os.getenv("CLIENT_SECRET")
-redirect_uri = "http://localhost:8000/"
+redirect_uri = "http://localhost:8888/callback"
+
+# Initialize the Spotify API client
+sp = spotipy.Spotify(auth_manager=SpotifyOAuth(client_id=client_id,
+                                               client_secret=client_secret,
+                                               redirect_uri=redirect_uri,
+                                               scope='playlist-modify-private'))
+
+
+sp_oauth = SpotifyOAuth(client_id=client_id, client_secret=client_secret, 
+                            redirect_uri=redirect_uri, scope='user-read-private')
+
 
 '''
 We first to request an access token using client id and client secret then usign that tocken we can access the Spotify API.
@@ -47,45 +59,77 @@ def get_auth_header(token):
     }
     return headers
 
-def search_artist(token, artist):
+def search_artist_id(token, artist):
     url = f"https://api.spotify.com/v1/search?q={artist}&type=artist&limit=1"
     req = requests.get(url, headers=get_auth_header(token))
-    res = json.loads(req.content)
-    print(res)
-    artist_id = res["artists"]["items"][0]["id"]
-    return artist_id
+    res = json.loads(req.content)["artists"]["items"]
+    if res.__len__() == 0:
+        print ("Artist not found with this name!")
+        return None
+
+    return res[0]["id"]
+
+def get_artist_top_tracks(token, artist_id):
+    url = f"https://api.spotify.com/v1/artists/{artist_id}/top-tracks?market=US"
+    req = requests.get(url, headers=get_auth_header(token))
+    res = json.loads(req.content)["tracks"]
+    return res
+
+def tracks_formatter(token_api, artist_id):
+    songs_list = [[]]
+    tracks = get_artist_top_tracks(token_api, artist_id)
+    for track in tracks:
+        songs_list.append([track["name"], track["external_urls"]["spotify"]])
+    return songs_list
+
 
 
 # get user id (not working)
 def get_user_id(token):
+    return "da3xyrtvbvjhqwb3lc4rmqw60"
     url = "https://api.spotify.com/v1/me"
-    headers = {
-        "Authorization": f"Bearer {token}"
-    }
-    req = requests.get(url, headers=headers) # headers=get_auth_header(token)
+    req = requests.get(url, headers=get_auth_header(token))
+
     res = json.loads(req.content)
     print(res)
-    # return "da3xyrtvbvjhqwb3lc4rmqw60"
+    if(res["error"]):
+        print("Error")
+        return None
+    return res["id"]
     
+def get_user_profile(token):
+    url = f"https://api.spotify.com/v1/users/{get_user_id(token)}"
+    req = requests.get(url, headers=get_auth_header(token))
+    res = json.loads(req.content)
+    return res
+    
+def create_playlist(username, playlist_name, track_uris, public=False):
+    # Initialize the Spotify API client
+    sp = spotipy.Spotify(auth_manager=SpotifyOAuth(client_id=client_id,
+                                                   client_secret=client_secret,
+                                                   redirect_uri=redirect_uri,
+                                                   scope='playlist-modify-private'))
 
-# create a playlist
-# def create_playlist(token, id, name):
-#     url = f"https://api.spotify.com/v1/users/{id}/playlists"
-#     data = {
-#         "name": name,
-#         "description": "Playlist created using the Spotify API"
-#     }
-#     req = requests.post(url, headers=get_auth_header(token), data=data)
-#     json_res = req.json()
-#     res = json.loads(req.content)
-#     print(json_res)
-#     #return playlist_id
+    # Create a new playlist
+    playlist = sp.user_playlist_create(username, playlist_name, public=public)
+
+    # Add tracks to the playlist (You can add tracks by their URIs)
+    
+    #sp.playlist_add_items(playlist['id'], track_uris)
+
+    return playlist
+
 
 
 if __name__ == "__main__":
-    token_api = get_access_token()  
-    print(get_user_id(token_api))
-    # print(search_artist(token, "Illenium"))
+    token = get_access_token()  
+    print(token)
+    print(get_user_profile(token))
+    artistName = input("Enter artist name: ")
+    artist_id = search_artist_id(token, artistName)
+    print("Do you want artist top tracks? (y/n)")
+    choice = input()
+    if choice == "y":
+        print(tracks_formatter(token, artist_id))
 
-    
 
