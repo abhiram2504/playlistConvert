@@ -14,15 +14,15 @@ client_id = os.getenv("CLIENT_ID")
 client_secret = os.getenv("CLIENT_SECRET")
 redirect_uri = "http://localhost:8888/callback"
 
-# Initialize the Spotify API client
-sp = spotipy.Spotify(auth_manager=SpotifyOAuth(client_id=client_id,
-                                               client_secret=client_secret,
-                                               redirect_uri=redirect_uri,
-                                               scope='playlist-modify-private'))
+# # Initialize the Spotify API client
+# sp = spotipy.Spotify(auth_manager=SpotifyOAuth(client_id=client_id,
+#                                                client_secret=client_secret,
+#                                                redirect_uri=redirect_uri,
+#                                                scope='playlist-modify-private'))
 
 
-sp_oauth = SpotifyOAuth(client_id=client_id, client_secret=client_secret, 
-                            redirect_uri=redirect_uri, scope='user-read-private')
+# sp_oauth = SpotifyOAuth(client_id=client_id, client_secret=client_secret, 
+#                             redirect_uri=redirect_uri, scope='user-read-private')
 
 
 '''
@@ -82,6 +82,39 @@ def tracks_formatter(token_api, artist_id):
         songs_list.append([track["name"], track["external_urls"]["spotify"]])
     return songs_list
 
+def get_track_id(token, track_name):
+    url = f"https://api.spotify.com/v1/search?q={track_name}&type=track&limit=1"
+    req = requests.get(url, headers=get_auth_header(token))
+    res = json.loads(req.content)["tracks"]["items"]
+    if res.__len__() == 0:
+        print ("Track not found with this name!")
+        return None
+
+    return res[0]["id"]
+
+def tracks_ids_formatter(token_api, artist_id):
+    songs_list = []
+    tracks = get_artist_top_tracks(token_api, artist_id)
+    for track in tracks:
+        songs_list.append(track["id"])
+    return songs_list
+
+def get_track_info(token, track_id):
+    url = f"https://api.spotify.com/v1/tracks/{track_id}"
+    req = requests.get(url, headers=get_auth_header(token))
+    res = json.loads(req.content)
+    return res
+
+def play_track(token, track_id):
+    url = f"https://api.spotify.com/v1/me/player/play"
+    data = {
+        "uris": [f"spotify:track:{track_id}"]
+    }
+    trackInfo = get_track_info(token, track_id)
+    print(trackInfo["name"]  + " " + trackInfo["external_urls"]["spotify"])
+    req = requests.put(url, headers=get_auth_header(token), data=json.dumps(data))
+    res = json.loads(req.content)
+    print(res)
 
 
 # get user id (not working)
@@ -127,9 +160,18 @@ if __name__ == "__main__":
     print(get_user_profile(token))
     artistName = input("Enter artist name: ")
     artist_id = search_artist_id(token, artistName)
-    print("Do you want artist top tracks? (y/n)")
+    print("Do you want artist top tracks? (y/n) /n Do you want to play artist top tracks? (p)")
     choice = input()
     if choice == "y":
         print(tracks_formatter(token, artist_id))
+    elif choice == "p":
+        print("Playing artist top tracks")
+        arr = tracks_ids_formatter(token, artist_id)
+        for track in arr:
+            play_track(token, track)
+    else:
+        print("Wrong input")
+
+
 
 
