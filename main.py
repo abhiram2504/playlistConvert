@@ -2,7 +2,6 @@ from dotenv import load_dotenv
 import os
 import requests
 import spotipy
-import youtube_dl
 from spotipy.oauth2 import SpotifyOAuth
 import base64
 import json
@@ -12,18 +11,7 @@ load_dotenv()
 # Spotify Authentication
 client_id = os.getenv("CLIENT_ID")
 client_secret = os.getenv("CLIENT_SECRET")
-redirect_uri = "http://localhost:8888/callback"
-
-# # Initialize the Spotify API client
-# sp = spotipy.Spotify(auth_manager=SpotifyOAuth(client_id=client_id,
-#                                                client_secret=client_secret,
-#                                                redirect_uri=redirect_uri,
-#                                                scope='playlist-modify-private'))
-
-
-# sp_oauth = SpotifyOAuth(client_id=client_id, client_secret=client_secret, 
-#                             redirect_uri=redirect_uri, scope='user-read-private')
-
+redirect_uri = "http://localhost:3000"
 
 '''
 We first to request an access token using client id and client secret then usign that tocken we can access the Spotify API.
@@ -52,10 +40,27 @@ def get_access_token():
     return token
     # we will need to use this token to use this token to access the Spotify API in the header
 
+def user_authorization():
+    # Make a request to the /authorize endpoint to get an authorization code
+    auth_code = requests.get('https://accounts.spotify.com/authorize', {
+        'client_id': client_id,
+        'response_type': 'code',
+        'redirect_uri': 'https://open.spotify.com/collection/playlists',
+        'scope': 'playlist-modify-private',
+    })
+    return auth_code
+
 # get header
 def get_auth_header(token):
     headers = {
         "Authorization": f"Bearer {token}"
+    }
+    return headers
+
+# different header for different endpoint
+def get_auth_header_new():
+    headers = {
+        
     }
     return headers
 
@@ -118,6 +123,8 @@ def play_track(token, track_id):
 
 
 # get user id (not working)
+# This was no working because the authrization scope was not appropriate.
+# TODO: fix this
 def get_user_id(token):
     return "da3xyrtvbvjhqwb3lc4rmqw60"
     url = "https://api.spotify.com/v1/me"
